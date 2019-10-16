@@ -5,7 +5,7 @@ import os
 
 
 class DatasetCatalog(object):
-    DATA_DIR = "datasets"
+    DATA_DIR = "/data2/data2/zewei/data"
     DATASETS = {
         "coco_2017_train": {
             "img_dir": "coco/train2017",
@@ -103,6 +103,22 @@ class DatasetCatalog(object):
         "cityscapes_fine_instanceonly_seg_test_cocostyle": {
             "img_dir": "cityscapes/images",
             "ann_file": "cityscapes/annotations/instancesonly_filtered_gtFine_test.json"
+        },
+        "rip_2019_train": {
+            "img_dir": "RipData/RipTrainingAllData",
+            "ann_file": "RipData/rip_data_train.json"
+        },
+        "rip_2019_test": {
+            "img_dir": "RipData/RipTrainingAllData",
+            "ann_file": "RipData/rip_data_test.json"
+        },
+        "rip_2019_cv_5": {
+            "img_dir": "RipData/RipTrainingAllData",
+            "ann_root": "RipData/cv_5_folder",
+        },
+        "rip_2019_cv_10": {
+            "img_dir": "RipData/RipTrainingAllData",
+            "ann_root": "RipData/cv_10_folder",
         }
     }
 
@@ -128,6 +144,25 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="PascalVOCDataset",
+                args=args,
+            )
+        elif "rip" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            if "_cv_" in name:
+                name, phase, k = name.split('-')
+                attrs = DatasetCatalog.DATASETS[name]
+                args = dict(
+                    root=os.path.join(data_dir, attrs["img_dir"]),
+                    ann_file=os.path.join(data_dir, attrs["ann_root"], f"{phase}_{k}.json")
+                )
+            else:
+                attrs = DatasetCatalog.DATASETS[name]
+                args = dict(
+                    root=os.path.join(data_dir, attrs["img_dir"]),
+                    ann_file=os.path.join(data_dir, attrs["ann_file"]),
+                )
+            return dict(
+                factory="RIPDataset",
                 args=args,
             )
         raise RuntimeError("Dataset not available: {}".format(name))
