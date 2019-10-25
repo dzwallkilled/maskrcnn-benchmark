@@ -7,6 +7,10 @@ import os
 import sys
 import argparse
 import numpy as np
+import cv2
+
+from deep_image_matting.core.matter import Matter, binary_mask_to_polygon, binary_mask_to_rle
+from generate_masks import butterfly_mask, gaussian_mask
 
 
 def _isArrayLike(obj):
@@ -31,7 +35,8 @@ class RIP:
                   'Could be a rip?': 4,
                   'Rip': 5}
 
-    def __init__(self, path=None):
+    def __init__(self, path=None, matter=None):
+        self.matter = matter
         if path is not None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -59,6 +64,8 @@ class RIP:
             _annotations = []
             for _m in _imgs:
                 img_file = os.path.join(_folder, 'img', _m)
+                # image = cv2.imread(os.path.join(path, img_file))
+                image = None
                 ann = json.load(open(os.path.join(path, _folder, 'ann', f'{_m}.json'), 'r'))
                 image_obj = {
                     "id": img_id,
@@ -70,7 +77,7 @@ class RIP:
                 _all_imgs.append(image_obj)
                 if ann['tags'] or ann['objects']:  # if the image is annotated
                     _train_imgs.append(image_obj)
-                    _annotations.extend(self._add_annotation(ann_id, img_id, ann['objects']))
+                    _annotations.extend(self._add_annotation(ann_id, img_id, ann['objects'], image))
                     ann_id += len(ann['objects'])
                 else:
                     _test_imgs.append(image_obj)
@@ -94,7 +101,7 @@ class RIP:
         all_dataset = self._make_dataset(total_imgs, 'RIP all data', total_anns)
         return all_dataset, train_dataset, test_dataset
 
-    def _add_annotation(self, ann_id: int, image_id: int, ann: dict):
+    def _add_annotation(self, ann_id: int, image_id: int, ann: dict, image=None):
         annotations = []
         for _id, _obj in enumerate(ann):
             x1, y1 = map(float, _obj['points']['exterior'][0])
@@ -103,18 +110,55 @@ class RIP:
             bottom, top = max(y1, y2), min(y1, y2)
             width = right - left
             height = bottom - top
+            bbox = [left, top, width, height]
             category_id = self.categories[_obj['classTitle']]
             iscrowd = 1 if len(ann) > 1 and category_id in [1, 2] else 0
+            segmentation = self._bbox_to_segmentation(image, bbox) if image is not None else None
             _ann = {
                 "id": ann_id + _id,
                 "image_id": image_id,
                 "category_id": category_id,
+                "segmentation": segmentation,
                 "area": width * height,
-                "bbox": [left, top, width, height],
+                "bbox": bbox,
                 "iscrowd": iscrowd,
             }
             annotations.append(_ann)
         return annotations
+
+    def _bbox_to_segmentation(self, image, bbox, seg_type='rle', mask_type='gaussian', matting=True):
+        """
+
+        :param image: ndarry, (img_h, img_w, 3)
+        :param bbox: [int], x, y, w ,h
+        :param seg_type: 'rle', 'poly'
+        :param mask_type: 'gaussian', 'bbox', 'butterfly'
+        :param matting: bool, whether to mat the mask or not
+        :return:
+        """
+        img_shape = image.shape[:2]
+        if mask_type == 'bbox':
+            mask = np.zeros(img_shape, dtype=np.uint8)
+        elif mask_type == 'gaussian':
+            mask = gaussian_mask(bbox, )
+        elif mask_type == 'butterfly':
+            mask = butterfly_mask(bbox)
+        else:
+            raise ValueError('No such mask type')
+
+        if matting:
+            mask = self.matter.matting(image, mask)
+
+        mask = mask > 25
+
+        if seg_type == 'polygon':
+            segmentation = binary_mask_to_polygon(mask, tolerance=2)
+        elif seg_type == 'rle':
+            segmentation = binary_mask_to_rle(mask)
+        else:
+            raise ValueError(f'{seg_type} not defined. (polygon/rle)')
+
+        return segmentation
 
     def _make_dataset(self, imgs, description, annotations=None):
         dataset = dict()
@@ -148,14 +192,15 @@ class RIP:
         :return:
         """
         path = os.path.abspath(os.path.expanduser(path)).split('.')[0]
+        os.makedirs(path, exist_ok=True)
         print(f'saving to path {os.path.dirname(path)}')
         tic = time.time()
         if dataset is not None:
             json.dump(open(path), dataset)
         else:
-            json.dump(self.all_set, open(f'{path}_all.json', 'w'), )
-            json.dump(self.train_set, open(f'{path}_train.json', 'w'))
-            json.dump(self.test_set, open(f'{path}_test.json', 'w'))
+            json.dump(self.all_set, open(f'{path}/rip_data_all.json', 'w'), )
+            json.dump(self.train_set, open(f'{path}/rip_data_train.json', 'w'))
+            json.dump(self.test_set, open(f'{path}/rip_data_test.json', 'w'))
         print('Done (t={:0.2f}s)'.format(time.time() - tic))
 
     def save_dataset_kfold(self, path, k=5, seed=123):
@@ -191,10 +236,30 @@ class RIP:
         print(path)
 
 
-if __name__ == '__main__':
+def save_dataset():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     args = parse_args()
     # path = '/Volumes/DZW-13656676703/RipData/RipTrainingAllData'
     args.datadir = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
     args.outdir = '/data2/data2/zewei/data/RipData/'
-    dataset = RIP(path=args.datadir)
-    dataset.save_dataset_kfold(path=args.outdir, k=5)
+    matter = Matter(resume='./deep_image_matting/model/stage1_sad_54.4.pth')
+    dataset = RIP(path=args.datadir, matter=matter)
+    # dataset.save_dataset(args.outdir)
+    # dataset.save_dataset_kfold(path=args.outdir, k=5)
+
+
+def view_data():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    args = parse_args()
+    args.datadir = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
+    args.outdir = '/data2/data2/zewei/data/RipData/'
+    from pycocotools.coco import COCO
+    coco = COCO(annotation_file=os.path.join(args.outdir, 'rip_data_train.json'))
+    anns = coco.loadAnns(0)
+    coco.showAnns(anns)
+    pass
+
+
+if __name__ == '__main__':
+    save_dataset()
+    # view_data()

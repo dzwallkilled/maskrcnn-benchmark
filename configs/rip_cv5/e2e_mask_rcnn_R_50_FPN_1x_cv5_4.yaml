@@ -1,4 +1,4 @@
-OUTPUT_DIR: "/data2/data2/zewei/exp/RipData/CV5-4"
+OUTPUT_DIR: "/data2/data2/zewei/exp/RipData/MaskRCNN-Benchmark/seg/CV5-4"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"

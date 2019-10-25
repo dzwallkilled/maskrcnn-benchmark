@@ -83,7 +83,7 @@ class RIPDataset(torchvision.datasets.coco.CocoDetection):
 
         if anno and "segmentation" in anno[0]:
             masks = [obj["segmentation"] for obj in anno]
-            masks = SegmentationMask(masks, img.size, mode='poly')
+            masks = SegmentationMask(masks, img.size, mode='mask')
             target.add_field("masks", masks)
 
         if anno and "keypoints" in anno[0]:
