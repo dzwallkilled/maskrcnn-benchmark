@@ -106,20 +106,24 @@ class DatasetCatalog(object):
         },
         "rip_2019_train": {
             "img_dir": "RipData/RipTrainingAllData",
-            "ann_file": "RipData/rip_data_train.json"
+            "ann_file": "RipData/COCOJSONs/full/rip_data_train.json"
         },
         "rip_2019_test": {
             "img_dir": "RipData/RipTrainingAllData",
-            "ann_file": "RipData/rip_data_test.json"
+            "ann_file": "RipData/COCOJSONs/full/rip_data_test.json"
         },
         "rip_2019_cv_5": {
             "img_dir": "RipData/RipTrainingAllData",
-            "ann_root": "RipData/cv_5_folder",
+            "ann_root": "RipData/COCOJSONs",
+        },
+        "rip_2019_patches_cv_5": {
+            "img_dir": "RipData/RipTrainingAllData",
+            "ann_root": "RipData/COCOJSONPatches",
         },
         "rip_2019_cv_10": {
             "img_dir": "RipData/RipTrainingAllData",
-            "ann_root": "RipData/cv_10_folder",
-        }
+            "ann_root": "RipData/COCOJSONs",
+        },
     }
 
     @staticmethod
@@ -149,13 +153,14 @@ class DatasetCatalog(object):
         elif "rip" in name:
             data_dir = DatasetCatalog.DATA_DIR
             if "_cv_" in name:
-                name, phase, k = name.split('-')
+                name, phase, k, level = name.split('-')
                 attrs = DatasetCatalog.DATASETS[name]
                 args = dict(
                     root=os.path.join(data_dir, attrs["img_dir"]),
-                    ann_file=os.path.join(data_dir, attrs["ann_root"], f"{phase}_{k}.json")
+                    ann_file=os.path.join(data_dir, attrs["ann_root"], level, f'cv_{name.split("_")[-1]}_fold', f"{phase}_{k}.json")
                 )
             else:
+                name, level = name.split('-')
                 attrs = DatasetCatalog.DATASETS[name]
                 args = dict(
                     root=os.path.join(data_dir, attrs["img_dir"]),

@@ -8,6 +8,7 @@ from skimage import measure
 import re
 from itertools import groupby
 from pycocotools.coco import COCO
+from pycocotools import mask as maskUtils
 
 from .deploy import inference_img_whole
 from .net import VGG16
@@ -98,14 +99,13 @@ if __name__ == "__main__":
     from generate_masks import MaskSaver
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
-    anno_file = os.path.expanduser('~/data/RipData/rip_data_train.json')
+    anno_file = os.path.expanduser('~/data/RipData/COCOJSONs/full/rip_data_train.json')
     dataset = MaskSaver(root, anno_file)
     coco_example = COCO(anno_file)
     dataset.step_gif('img_cv.png', 'mask.png', index=0)
 
-    result_dir = '.'
-    if not os.path.exists(result_dir):
-        os.makedirs(result_dir)
+    result_dir = './tests'
+    os.makedirs(result_dir, exist_ok=True)
 
     # parameters setting
     parser = argparse.ArgumentParser()
@@ -160,9 +160,23 @@ if __name__ == "__main__":
         # res2 = binary_mask_to_rle(pred_mattes*1./255)
 
         res = binary_mask_to_polygon(mask, tolerance=2)
-        res2 = binary_mask_to_rle(mask)
+        import time
+        tic = time.time()
+        for _i in range(100):
+            res2 = binary_mask_to_rle(mask)
+        toc = time.time()
+        print(toc - tic)
+
+        tic = time.time()
+        for _i in range(100):
+            pred_mattes[pred_mattes > 10] = 255
+            pred_mattes[pred_mattes <= 10] = 0
+            rle2 = maskUtils.encode(np.asfortranarray(pred_mattes))
+        toc = time.time()
+        print(toc - tic)
+
         info = dataset.get_info(idx)
-        annotation_info = {
+        ann = {
             "id": 1,
             "image_id": 1,
             "iscrowd": 0,
@@ -171,6 +185,18 @@ if __name__ == "__main__":
             "width": 1920,
             "height": 1080,
         }
-        coco_example.showAnns([annotation_info])
+        rle = maskUtils.frPyObjects([ann['segmentation']], ann['height'], ann['width'])
+        m = maskUtils.decode(rle)
+
+        pred_mattes[pred_mattes > 25] = 255
+        pred_mattes[pred_mattes <= 25] = 0
+        rle2 = maskUtils.encode(np.asfortranarray(pred_mattes))
+        m2 = maskUtils.decode(rle2)
+
+        import cv2
+        cv2.imwrite('./tests/mask.png', pred_mattes)
+        cv2.imwrite('./tests/mask2.png', m2*255)
+        cv2.imwrite('./tests/mask3.png', m*255)
         pass
+        exit()
 

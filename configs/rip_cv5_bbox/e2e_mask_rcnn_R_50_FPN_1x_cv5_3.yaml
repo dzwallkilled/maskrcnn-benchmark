@@ -1,4 +1,4 @@
-OUTPUT_DIR: "/data2/data2/zewei/exp/RipData/MaskRCNN-Benchmark/seg/CV5-1"
+OUTPUT_DIR: "/data2/data2/zewei/exp/RipData/MaskRCNN-Benchmark/full/no_seg/CV5-3"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
@@ -32,8 +32,8 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: False
 DATASETS:
-  TRAIN: ("rip_2019_cv_5-train-1",)
-  TEST: ("rip_2019_cv_5-val-1",)
+  TRAIN: ("rip_2019_cv_5-train-3",)
+  TEST: ("rip_2019_cv_5-val-3",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
   NUM_WORKERS: 16

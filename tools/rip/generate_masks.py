@@ -4,6 +4,9 @@ import numpy as np
 import cv2
 from cv2.ximgproc import *
 
+from pycocotools import mask as maskUtils
+
+import shutil
 
 def butterfly_mask(bbox, imgh=1080, imgw=1920):
     x, y, w, h = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
@@ -27,8 +30,8 @@ def gaussian_mask(bbox, imgh=1080, imgw=1920):
     x, y, w, h = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
     cx = x + w // 2
     cy = y + h // 2
-    sigma_x = w // 3
-    sigma_y = h // 3
+    sigma_x = w / 3.
+    sigma_y = h / 3.
     xx, yy = np.meshgrid(np.arange(imgw, dtype=np.float32), np.arange(imgh, dtype=np.float32))
     # mask = np.exp(-0.5*(((xx - cx)*h/w) ** 2 + ((yy - cy)*1) ** 2) / sigma **2)
     mask = np.exp(-0.5 * ((xx - cx)**2/sigma_x ** 2 + (yy-cy)**2/sigma_y**2))
@@ -54,7 +57,7 @@ class MaskSaver:
         mask = np.zeros(img_shape, dtype=np.uint8)
         for bbox in bboxes:
             # mask = butter_mask(bbox=bbox)
-            mask = gaussian_mask(bbox)
+            mask = gaussian_mask(bbox, img['height'], img['width'])
             # bbox = [int(i) for i in bbox]
             # x, y, w, h = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
             # mask[bbox[1]:bbox[1] + bbox[3], bbox[0]:bbox[0] + bbox[2]] = 50
@@ -105,8 +108,83 @@ class MaskSaver:
         cv2.imwrite('dst3.png', dst3)
 
 
-if __name__ == '__main__':
+def generate_masks():
+    import tqdm
+    from deep_image_matting.core.matter import Matter
+    from convert_rip_to_coco import load_folder_files, bbox_to_segmentation
+    matter = Matter(resume='deep_image_matting/model/stage1_sad_54.4.pth', max_size=800)
+
     root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
-    anno_file = os.path.expanduser('~/data/RipData/rip_data_train.json')
-    generator = MaskSaver(root, anno_file)
-    generator.step()
+
+    _, folders, _ = next(os.walk(root))
+    folders.sort()
+    for folder in folders:
+        # shutil.rmtree(os.path.join(root, folder, 'ann_mask'))
+        os.makedirs(os.path.join(root, folder, 'ann_mask'), exist_ok=True)
+
+    img_files, anno_files = load_folder_files(root, dicts=['img', 'ann'])
+    pbar = tqdm.tqdm(zip(img_files, anno_files))
+    for img_file, anno_file in pbar:
+        anno = json.load(open(os.path.join(root, anno_file), 'r'))
+        output_file = anno_file.replace('/ann/', '/ann_mask/')
+
+        if anno['objects']:
+            image = cv2.imread(os.path.join(root, img_file))
+
+            for _obj in anno['objects']:
+                x1, y1 = map(float, _obj['points']['exterior'][0])
+                x2, y2 = map(float, _obj['points']['exterior'][1])
+                left, top, width, height = min(x1, x2), min(y1, y2), abs(x1 - x2), abs(y1 - y2)
+                bbox = [left, top, width, height]
+                segmentation = bbox_to_segmentation(image, bbox, matter)
+                segmentation['counts'] = segmentation['counts'].decode('utf-8')
+                _obj['mask'] = segmentation
+                _obj['bbox'] = bbox
+
+        json.dump(anno, open(os.path.join(root, output_file), 'w'))
+    pass
+
+
+def generate_mask_patches():
+    import tqdm
+    from deep_image_matting.core.matter import Matter
+    from convert_rip_to_coco import load_folder_files, bbox_to_segmentation
+    matter = Matter(resume='deep_image_matting/model/stage1_sad_54.4.pth', max_size=800)
+
+    root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
+
+    _, folders, _ = next(os.walk(root))
+    folders.sort()
+    for folder in folders:
+        # shutil.rmtree(os.path.join(root, folder, 'ann_mask'))
+        os.makedirs(os.path.join(root, folder, 'ann_mask_patches'), exist_ok=True)
+
+    img_files, anno_files = load_folder_files(root, dicts=['img_patches', 'ann_patches'])
+    pbar = tqdm.tqdm(zip(img_files, anno_files))
+    for img_file, anno_file in pbar:
+        anno = json.load(open(os.path.join(root, anno_file), 'r'))
+        output_file = anno_file.replace('/ann/', '/ann_mask_patches/')
+        os.makedirs(os.path.dirname(output_file))
+
+        if anno['objects']:
+            image = cv2.imread(os.path.join(root, img_file))
+            for _obj in anno['objects']:
+                x1, y1 = map(float, _obj['points']['exterior'][0])
+                x2, y2 = map(float, _obj['points']['exterior'][1])
+                left, top, width, height = min(x1, x2), min(y1, y2), abs(x1 - x2), abs(y1 - y2)
+                bbox = [left, top, width, height]
+                segmentation = bbox_to_segmentation(image, bbox, matter)
+                segmentation['counts'] = segmentation['counts'].decode('utf-8')
+                _obj['mask'] = segmentation
+                _obj['bbox'] = bbox
+        json.dump(anno, open(os.path.join(root, output_file), 'w'))
+    pass
+
+
+if __name__ == '__main__':
+    generate_masks()
+    generate_mask_patches()
+    # root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
+    # anno_file = os.path.expanduser('~/data/RipData/rip_data_train.json')
+    # generator = MaskSaver(root, anno_file)
+    # generator.step()

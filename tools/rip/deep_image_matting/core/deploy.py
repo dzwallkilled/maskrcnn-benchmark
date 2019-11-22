@@ -1,13 +1,15 @@
 import torch
 import argparse
 import torch.nn as nn
-import net
 import cv2
 import os
 from torchvision import transforms
 import torch.nn.functional as F
 import numpy as np
 import time
+
+from .net import VGG16
+
 
 def get_args():
     # Training settings
@@ -186,7 +188,7 @@ def main():
     if args.cuda and not torch.cuda.is_available():
         raise Exception("No GPU found, please run without --cuda")
 
-    model = net.VGG16(args)
+    model = VGG16(args)
     ckpt = torch.load(args.resume)
     if args.not_strict:
         model.load_state_dict(ckpt['state_dict'], strict=False)
@@ -276,6 +278,7 @@ def main():
     if args.alphaDir != '':
         print("Eval-MSE: {}".format(mse_diffs / cur))
         print("Eval-SAD: {}".format(sad_diffs / cur))
+
 
 if __name__ == "__main__":
     main()

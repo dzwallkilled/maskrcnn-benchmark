@@ -32,6 +32,8 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 def train(cfg, local_rank, distributed):
     model = build_detection_model(cfg)
@@ -130,10 +132,11 @@ def run_test(cfg, model, distributed):
 
 
 def main():
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '4'
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Training")
     parser.add_argument(
         "--config-file",
-        default="",
+        default="../configs/rip_bbox_patches/e2e_mask_rcnn_R_50_FPN_1x_level2.yaml",
         metavar="FILE",
         help="path to config file",
         type=str,

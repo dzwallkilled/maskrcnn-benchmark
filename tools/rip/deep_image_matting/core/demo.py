@@ -8,7 +8,7 @@ import numpy as np
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 from deploy import inference_img_whole
-from matter import MaskGenerator
+from generate_masks import MaskSaver
 
 if __name__ == "__main__":
     root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     img_path = 'img_cv.png'
     mask_path = 'mask.png'
     result_dir = '.'
-    generator = MaskGenerator(root, anno_file)
+    generator = MaskSaver(root, anno_file)
     generator.step_gif(img_path, mask_path, index=100)
 
     image_list = [img_path]
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     args.resume = "../model/stage1_sad_54.4.pth"
     args.stage = 1
     args.crop_or_resize = "whole"
-    args.max_size = 1600
+    args.max_size = 1920
 
     # init model
     model = net.VGG16(args)
@@ -66,6 +66,10 @@ if __name__ == "__main__":
         image = cv2.imread(image_path)
         trimap = cv2.imread(trimap_path)[:, :, 0]
 
+        mask_vis = trimap.copy()
+        mask_vis[mask_vis > 0] = 255
+        img = 0.8 * image + 0.2 * np.repeat(mask_vis, 3).reshape((1080, 1920, 3))
+        cv2.imwrite('img_bbox.png', img.astype(np.uint8))
         torch.cuda.empty_cache()
         with torch.no_grad():
             pred_mattes = inference_img_whole(args, model, image, trimap)
