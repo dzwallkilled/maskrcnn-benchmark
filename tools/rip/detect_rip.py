@@ -5,8 +5,8 @@ import os
 import json
 
 from maskrcnn_benchmark.config import cfg
-from rip_detector import RIPDemo
-
+from rip_detector import RIPDetector
+from image_decomposition import decompose_image
 import time
 
 
@@ -17,7 +17,7 @@ def main():
     parser.add_argument('--output_dir', type=str, default='/data2/data2/zewei/data/RipData/MaskRCNN')
     parser.add_argument(
         "--config-file",
-        default="../configs/rip/e2e_mask_rcnn_R_50_FPN_1x.yaml",
+        default="../../configs/rip_mask_patches/e2e_mask_rcnn_R_50_FPN_1x_level2.yaml",
         metavar="FILE",
         help="path to config file",
     )
@@ -30,7 +30,7 @@ def main():
     parser.add_argument(
         "--min-image-size",
         type=int,
-        default=224,
+        default=800,
         help="Smallest size of the image to feed to the model. "
             "Model was trained with 800, which gives best results",
     )
@@ -43,7 +43,7 @@ def main():
     parser.add_argument(
         "--masks-per-dim",
         type=int,
-        default=2,
+        default=1,
         help="Number of heatmaps per dimension to show",
     )
     parser.add_argument(
@@ -61,7 +61,7 @@ def main():
     cfg.freeze()
 
     # prepare object that handles inference plus adds predictions on top of image
-    rip_demo = RIPDemo(
+    rip_demo = RIPDetector(
         cfg,
         confidence_threshold=args.confidence_threshold,
         show_mask_heatmaps=args.show_mask_heatmaps,
@@ -69,23 +69,35 @@ def main():
         min_image_size=args.min_image_size,
     )
 
-    args.root = '/home/zd027/RipData_Debug'
-    args.anno_file = ''
+    # args.root = '/home/zd027/RipData_Debug'
+    # args.anno_file = ''
+    #
+    # if args.anno_file.endswith('.json'):
+    #     ann_file = json.load(open(args.anno_file, 'r'))
+    #     files = [_img['file_name'] for _img in ann_file['images']]
+    #     save_files = [os.path.join(args.output_dir, _file).replace('img', 'mask_rcnn') for _file in files]
+    # else:
+    #     files = os.listdir(args.root)
+    #     os.makedirs(f'tests/detect/', exist_ok=True)
+    #     save_files = [f'tests/detect/{_file}' for _file in files]
 
-    if args.anno_file.endswith('.json'):
-        ann_file = json.load(open(args.anno_file, 'r'))
-        files = [_img['file_name'] for _img in ann_file['images']]
-        save_files = [os.path.join(args.output_dir, _file).replace('img', 'mask_rcnn') for _file in files]
+    args.root = '.'
+    files = ['tests/img_cv.png']
+    if args.show_mask_heatmaps:
+        save_files = [f'tests/seg_mask/img_mask.png']
     else:
-        files = os.listdir(args.root)
-        save_files = [f'output/{_file}' for _file in files]
+        save_files = [f'tests/detect_mask/img_mask.png']
+
 
     for _idx, (_file, _save_file) in enumerate(zip(files, save_files)):
         start_time = time.time()
         img = cv2.imread(os.path.join(args.root, _file))
-        composite = rip_demo.run_on_opencv_image(img)
-        print("{} {} Time: {:.2f} s / img".format(_idx, _file, time.time() - start_time))
-        cv2.imwrite(_save_file, composite)
+        patches = decompose_image(img, None, (800, 800), (300, 700))
+        for i, patch in patches.items():
+            composite = rip_demo.run_on_opencv_image(patch.image, 3)
+            print("{} {} Time: {:.2f} s / img".format(_idx, _file, time.time() - start_time))
+            frame, ext = _save_file.split('.')
+            cv2.imwrite(frame+"_patch_%02d."%i+ext, composite)
 
 
 if __name__ == "__main__":

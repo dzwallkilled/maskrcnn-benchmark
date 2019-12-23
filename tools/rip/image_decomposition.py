@@ -80,6 +80,12 @@ def decompose_image(image, annos, patch_size, stride):
         assert isinstance(patch_size, list) or \
                isinstance(patch_size, tuple) or \
                isinstance(patch_size, np.dtype)
+    if isinstance(stride, int):
+        stride = (stride, stride)
+    else:
+        assert isinstance(stride, list) or \
+               isinstance(stride, tuple) or \
+               isinstance(stride, np.dtype)
 
     num_rows = math.ceil((img_h - patch_size[0]) / stride[0]) + 1
     num_cols = math.ceil((img_w - patch_size[1]) / stride[1]) + 1
@@ -99,43 +105,46 @@ def decompose_image(image, annos, patch_size, stride):
             down_right_y = up_left_y + patch_size[0] - 1
             cut_patch = image[up_left_y:down_right_y + 1, up_left_x:down_right_x + 1]
 
-            objects = []
-            for _obj in annos['objects']:
-                new_obj = copy.deepcopy(_obj)
-                exterior = new_obj['points']['exterior']
-                bbox_xyxy = [exterior[0][0],
-                        exterior[0][1],
-                        exterior[1][0],
-                        exterior[1][1]]
-                bbox_xyxy = [min(bbox_xyxy[0], bbox_xyxy[2]), min(bbox_xyxy[1], bbox_xyxy[3]), max(bbox_xyxy[0], bbox_xyxy[2]), max(bbox_xyxy[1], bbox_xyxy[3])]
-                bbox1 = [bbox_xyxy[0], bbox_xyxy[1], bbox_xyxy[2] - bbox_xyxy[0], bbox_xyxy[3] - bbox_xyxy[1]]
-                assert bbox1 == _obj['bbox'], (bbox1, _obj['bbox'])
-                overlapping_bbox = compute_overlapping_box([up_left_x, up_left_y, down_right_x, down_right_y],
-                                                           bbox_xyxy)
+            if annos is not None:
+                objects = []
+                for _obj in annos['objects']:
+                    new_obj = copy.deepcopy(_obj)
+                    exterior = new_obj['points']['exterior']
+                    bbox_xyxy = [exterior[0][0],
+                            exterior[0][1],
+                            exterior[1][0],
+                            exterior[1][1]]
+                    bbox_xyxy = [min(bbox_xyxy[0], bbox_xyxy[2]), min(bbox_xyxy[1], bbox_xyxy[3]), max(bbox_xyxy[0], bbox_xyxy[2]), max(bbox_xyxy[1], bbox_xyxy[3])]
+                    bbox1 = [bbox_xyxy[0], bbox_xyxy[1], bbox_xyxy[2] - bbox_xyxy[0], bbox_xyxy[3] - bbox_xyxy[1]]
+                    assert bbox1 == _obj['bbox'], (bbox1, _obj['bbox'])
+                    overlapping_bbox = compute_overlapping_box([up_left_x, up_left_y, down_right_x, down_right_y],
+                                                               bbox_xyxy)
 
-                if overlapping_bbox:
-                    new_exterior = [[overlapping_bbox[0] - up_left_x, overlapping_bbox[1] - up_left_y],
-                                    [overlapping_bbox[2] - up_left_x, overlapping_bbox[3] - up_left_y]]
-                    new_obj['points']['exterior'] = new_exterior
-                    new_obj['bbox'] = [new_exterior[0][0],
-                                       new_exterior[0][1],
-                                       new_exterior[1][0] - new_exterior[0][0],
-                                       new_exterior[1][1] - new_exterior[0][1]]
+                    if overlapping_bbox:
+                        new_exterior = [[overlapping_bbox[0] - up_left_x, overlapping_bbox[1] - up_left_y],
+                                        [overlapping_bbox[2] - up_left_x, overlapping_bbox[3] - up_left_y]]
+                        new_obj['points']['exterior'] = new_exterior
+                        new_obj['bbox'] = [new_exterior[0][0],
+                                           new_exterior[0][1],
+                                           new_exterior[1][0] - new_exterior[0][0],
+                                           new_exterior[1][1] - new_exterior[0][1]]
 
-                    segmentation = new_obj['mask']
-                    m = maskUtils.decode(segmentation)
-                    m = pad_image(m, [0, pad_h, 0, pad_w])
-                    m_patch = m[up_left_y:down_right_y + 1, up_left_x:down_right_x + 1]
-                    seg_patch = maskUtils.encode(np.asfortranarray(m_patch))
-                    seg_patch['counts'] = seg_patch['counts'].decode('utf-8')
-                    new_obj['mask'] = seg_patch
+                        segmentation = new_obj['mask']
+                        m = maskUtils.decode(segmentation)
+                        m = pad_image(m, [0, pad_h, 0, pad_w])
+                        m_patch = m[up_left_y:down_right_y + 1, up_left_x:down_right_x + 1]
+                        seg_patch = maskUtils.encode(np.asfortranarray(m_patch))
+                        seg_patch['counts'] = seg_patch['counts'].decode('utf-8')
+                        new_obj['mask'] = seg_patch
 
-                    objects.append(new_obj)
-            patch_annos = {'description': annos['description'],
-                           'tags': annos['tags'],
-                           'size': {'height': patch_size[0], 'width': patch_size[1]},
-                           'objects': objects}
-            patches[patch_cnt] = Patch(image=cut_patch.copy(), annos=patch_annos.copy())
+                        objects.append(new_obj)
+                patch_annos = {'description': annos['description'],
+                               'tags': annos['tags'],
+                               'size': {'height': patch_size[0], 'width': patch_size[1]},
+                               'objects': objects}
+                patches[patch_cnt] = Patch(image=cut_patch.copy(), annos=patch_annos.copy())
+            else:
+                patches[patch_cnt] = Patch(image=cut_patch.copy(), annos=None)
             patch_cnt += 1
 
     return patches
@@ -225,6 +234,11 @@ def test_decompose_rip_images():
     input_root = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
     output_root = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
     decompose_rip_images(input_root, output_root)
+
+
+def test_assemble_patches():
+    bboxes = [0, 0, 100, 100]
+    assemble_patches(bboxes, [800, 800], [300, 700], image_size=(1080, 1920), type='xyxy')
 
 
 if __name__ == '__main__':

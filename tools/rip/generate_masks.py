@@ -2,11 +2,10 @@ import json
 import os
 import numpy as np
 import cv2
-from cv2.ximgproc import *
+# from cv2.ximgproc import *
+# from pycocotools import mask as maskUtils
+# import matplotlib.pyplot as plt
 
-from pycocotools import mask as maskUtils
-
-import shutil
 
 def butterfly_mask(bbox, imgh=1080, imgw=1920):
     x, y, w, h = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
@@ -36,6 +35,14 @@ def gaussian_mask(bbox, imgh=1080, imgw=1920):
     # mask = np.exp(-0.5*(((xx - cx)*h/w) ** 2 + ((yy - cy)*1) ** 2) / sigma **2)
     mask = np.exp(-0.5 * ((xx - cx)**2/sigma_x ** 2 + (yy-cy)**2/sigma_y**2))
     mask[:y, :] = mask[y+h:, :] = mask[:, :x] = mask[:, x+w:] = 0
+    dh = int(h//8)
+    dw = int(w//8)
+    # plt.imshow(mask)
+    # plt.show()
+
+    mask[y+3*dh:y+5*dh, x+3*dw:x+5*dw] = 1
+    # plt.imshow(mask)
+    # plt.show()
     return mask
 
 
@@ -157,14 +164,14 @@ def generate_mask_patches():
     folders.sort()
     for folder in folders:
         # shutil.rmtree(os.path.join(root, folder, 'ann_mask'))
-        os.makedirs(os.path.join(root, folder, 'ann_mask_patches'), exist_ok=True)
+        os.makedirs(os.path.join(root, folder, 'ann_mask_patches_v1'), exist_ok=True)
 
     img_files, anno_files = load_folder_files(root, dicts=['img_patches', 'ann_patches'])
     pbar = tqdm.tqdm(zip(img_files, anno_files))
     for img_file, anno_file in pbar:
         anno = json.load(open(os.path.join(root, anno_file), 'r'))
-        output_file = anno_file.replace('/ann/', '/ann_mask_patches/')
-        os.makedirs(os.path.dirname(output_file))
+        output_file = anno_file.replace('/ann_patches/', '/ann_mask_patches_v1/')
+        os.makedirs(os.path.dirname(os.path.join(root, output_file)), exist_ok=True)
 
         if anno['objects']:
             image = cv2.imread(os.path.join(root, img_file))
@@ -182,7 +189,7 @@ def generate_mask_patches():
 
 
 if __name__ == '__main__':
-    generate_masks()
+    # generate_masks()
     generate_mask_patches()
     # root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
     # anno_file = os.path.expanduser('~/data/RipData/rip_data_train.json')

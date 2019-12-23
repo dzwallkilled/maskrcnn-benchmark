@@ -120,6 +120,10 @@ class DatasetCatalog(object):
             "img_dir": "RipData/RipTrainingAllData",
             "ann_root": "RipData/COCOJSONPatches",
         },
+        "rip_2019_patches_v1_cv_5": {
+            "img_dir": "RipData/RipTrainingAllData",
+            "ann_root": "RipData/COCOJSONPatches_v1",
+        },
         "rip_2019_cv_10": {
             "img_dir": "RipData/RipTrainingAllData",
             "ann_root": "RipData/COCOJSONs",

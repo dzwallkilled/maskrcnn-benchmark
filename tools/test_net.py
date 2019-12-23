@@ -23,12 +23,13 @@ try:
 except ImportError:
     raise ImportError('Use APEX for mixed precision via apex.amp')
 
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch Object Detection Inference")
     parser.add_argument(
         "--config-file",
-        default="/private/home/fmassa/github/detectron.pytorch_v2/configs/e2e_faster_rcnn_R_50_C4_1x_caffe2.yaml",
+        default="configs/rip_mask_patches/e2e_mask_rcnn_R_50_FPN_1x_level1.yaml",
         metavar="FILE",
         help="path to config file",
     )
@@ -36,7 +37,7 @@ def main():
     parser.add_argument(
         "--ckpt",
         help="The path to the checkpoint for test, default is the latest checkpoint.",
-        default=None,
+        default='/data2/data2/zewei/exp/RipData/MaskRCNN-Benchmark/patches/level1/seg/CV5-1/model_final.pth',
     )
     parser.add_argument(
         "opts",
@@ -110,4 +111,5 @@ def main():
 
 
 if __name__ == "__main__":
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
     main()

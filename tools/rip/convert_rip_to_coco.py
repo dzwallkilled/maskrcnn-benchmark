@@ -92,6 +92,7 @@ def add_categories(categories):
         cat_obj.append(category)
     return cat_obj
 
+
 class RIP:
     categories = {'Flash Rip': 0,
                   'Rip Neck': 1,
@@ -114,6 +115,7 @@ class RIP:
             dicts = ['img', 'ann']
         if patches:
             dicts = [x+'_patches' for x in dicts]
+        dicts = ['img_patches', 'ann_mask_patches_v1']
         if path is not None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -170,7 +172,8 @@ class RIP:
         _id = 0
         for _obj in ann:
             category_id = self.categories[_obj['classTitle']]
-            iscrowd = 1 if len(ann) > 1 and category_id in [1, 2] else 0
+            # iscrowd = 1 if len(ann) > 1 and category_id in [1, 2] else 0
+            iscrowd = 1  # the segmentation uses RLE format
             bbox = _obj['bbox']
             segmentation = _obj['mask']
             _ann = {
@@ -195,7 +198,7 @@ class RIP:
                             'date_created': 2019,
                             'url': None},
                    'liscences': [],
-                   'categories': self._add_categories()}
+                   'categories': add_categories(self.categories)}
         if annotations is not None:
             dataset['annotations'] = annotations
 
@@ -260,7 +263,7 @@ def save_dataset():
     # args.datadir = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
     # args.outdir = f'/data2/data2/zewei/data/RipData/COCOJSONs/full'
     args.datadir = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
-    args.outdir = f'/data2/data2/zewei/data/RipData/COCOJSONPatches/full/'
+    args.outdir = f'/data2/data2/zewei/data/RipData/COCOJSONPatches_v1/full/'
     matter = Matter(resume='deep_image_matting/model/stage1_sad_54.4.pth', max_size=800)
     dataset = RIP(path=args.datadir, matter=matter, level='full', anno_type=('bbox', 'seg'), patches=True)
     dataset.save_dataset(args.outdir)
@@ -331,7 +334,7 @@ def convert_data():
     args = parse_args()
     data_dir = '/data2/data2/zewei/data/RipData/'
 
-    for datadir in ['COCOJSONPatches', 'COCOJSONs']:
+    for datadir in ['COCOJSONPatches_v1', 'COCOJSONs']:
         args.datadir = data_dir + datadir
         for level in ['level1', 'level2', 'level3']:
             for folder in ['cv_5_fold', 'cv_10_fold']:
@@ -350,6 +353,6 @@ def convert_data():
 
 if __name__ == '__main__':
     # convert_image_file()
-    # save_dataset()
+    save_dataset()
     convert_data()
     # view_data()
