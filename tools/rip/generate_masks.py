@@ -92,7 +92,7 @@ class MaskSaver:
         cv2.imwrite(img_path, img_cv)
         cv2.imwrite(mask_path, mask)
 
-    def step_gif(self, img_path='img_cv.png', mask_path='mask.png', index=None):
+    def step_gif(self, save_folder='', index=None):
         if index is None:
             index = self._index
             self._index = (self._index + 1) % self._len
@@ -100,8 +100,8 @@ class MaskSaver:
             index = index % self._len
 
         img_cv, mask = self.__getitem__(index)
-        cv2.imwrite(img_path, img_cv)
-        cv2.imwrite(mask_path, mask)
+        cv2.imwrite(os.path.join(save_folder, 'img_cv.png'), img_cv)
+        cv2.imwrite(os.path.join(save_folder, 'img_mask.png'), mask)
         guide = cv2.cvtColor(img_cv, cv2.COLOR_RGB2GRAY)
 
         dst1 = cv2.ximgproc.guidedFilter(
@@ -110,9 +110,9 @@ class MaskSaver:
             guide=guide, src=mask, radius=16, eps=200, dDepth=-1)
         dst3 = cv2.ximgproc.guidedFilter(
             guide=guide, src=mask, radius=16, eps=1000, dDepth=-1)
-        cv2.imwrite('dst1.png', dst1)
-        cv2.imwrite('dst2.png', dst2)
-        cv2.imwrite('dst3.png', dst3)
+        cv2.imwrite(os.path.join(save_folder, 'dst1.png'), dst1)
+        cv2.imwrite(os.path.join(save_folder, 'dst2.png'), dst2)
+        cv2.imwrite(os.path.join(save_folder, 'dst3.png'), dst3)
 
 
 def generate_masks():
@@ -189,9 +189,10 @@ def generate_mask_patches():
 
 
 if __name__ == '__main__':
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     # generate_masks()
-    generate_mask_patches()
-    # root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
-    # anno_file = os.path.expanduser('~/data/RipData/rip_data_train.json')
-    # generator = MaskSaver(root, anno_file)
-    # generator.step()
+    # generate_mask_patches()
+    root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
+    anno_file = os.path.expanduser('~/data/RipData/COCOJSONs/full/rip_data_train.json')
+    generator = MaskSaver(root, anno_file)
+    generator.step_gif(save_folder='tests/gen_mask', )

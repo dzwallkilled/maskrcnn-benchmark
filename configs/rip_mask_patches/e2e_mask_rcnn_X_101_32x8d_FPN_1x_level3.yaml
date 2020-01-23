@@ -36,7 +36,7 @@ MODEL:
   MASK_ON: True
 DATASETS:
   TRAIN: ("rip_2019_patches_v1_cv_5-train-1-level3",)
-  TEST: ("rip_2019_patches_v1_cv_5-val-1-level3",)
+  TEST: ("rip_2019_patches_cv_5-val-1-level3",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:

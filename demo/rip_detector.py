@@ -5,7 +5,7 @@ import os
 import json
 
 from maskrcnn_benchmark.config import cfg
-from rip_detector import RIPDemo
+from demo.rip_predict import RIPDemo
 
 import time
 

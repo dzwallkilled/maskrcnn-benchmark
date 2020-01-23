@@ -10,8 +10,8 @@ from itertools import groupby
 from pycocotools.coco import COCO
 from pycocotools import mask as maskUtils
 
-from .deploy import inference_img_whole
-from .net import VGG16
+from deploy import inference_img_whole
+from net import VGG16
 
 convert = lambda text: int(text) if text.isdigit() else text.lower()
 natrual_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
@@ -97,12 +97,12 @@ class Matter:
 
 if __name__ == "__main__":
     from generate_masks import MaskSaver
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     root = os.path.expanduser('~/data/RipData/RipTrainingAllData')
     anno_file = os.path.expanduser('~/data/RipData/COCOJSONs/full/rip_data_train.json')
     dataset = MaskSaver(root, anno_file)
     coco_example = COCO(anno_file)
-    dataset.step_gif('img_cv.png', 'mask.png', index=0)
+    dataset.step_gif(save_folder='./tests/', index=0)
 
     result_dir = './tests'
     os.makedirs(result_dir, exist_ok=True)

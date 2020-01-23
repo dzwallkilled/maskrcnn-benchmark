@@ -5,7 +5,8 @@ import os
 import json
 
 from maskrcnn_benchmark.config import cfg
-from rip_detector import RIPDetector
+# from rip_detector import RIPDetector
+from rip_detector_patches import RIPDetector
 from image_decomposition import decompose_image
 import time
 
@@ -60,6 +61,7 @@ def main():
     cfg.merge_from_list(args.opts)
     cfg.freeze()
 
+    # args.show_mask_heatmaps = False
     # prepare object that handles inference plus adds predictions on top of image
     rip_demo = RIPDetector(
         cfg,
@@ -88,16 +90,22 @@ def main():
     else:
         save_files = [f'tests/detect_mask/img_mask.png']
 
+    # for _idx, (_file, _save_file) in enumerate(zip(files, save_files)):
+    #     start_time = time.time()
+    #     img = cv2.imread(os.path.join(args.root, _file))
+    #     patches = decompose_image(img, None, (800, 800), (300, 700))
+    #     for i, patch in patches.items():
+    #         composite = rip_demo.run_on_opencv_image(patch.image, 3)
+    #         print("{} {} Time: {:.2f} s / img".format(_idx, _file, time.time() - start_time))
+    #         frame, ext = _save_file.split('.')
+    #         cv2.imwrite(frame+"_patch_%02d."%i+ext, composite)
 
     for _idx, (_file, _save_file) in enumerate(zip(files, save_files)):
         start_time = time.time()
         img = cv2.imread(os.path.join(args.root, _file))
-        patches = decompose_image(img, None, (800, 800), (300, 700))
-        for i, patch in patches.items():
-            composite = rip_demo.run_on_opencv_image(patch.image, 3)
-            print("{} {} Time: {:.2f} s / img".format(_idx, _file, time.time() - start_time))
-            frame, ext = _save_file.split('.')
-            cv2.imwrite(frame+"_patch_%02d."%i+ext, composite)
+        composite = rip_demo.run_on_image_patches(img, 3)
+        print("{} {} Time: {:.2f} s / img".format(_idx, _file, time.time() - start_time))
+        cv2.imwrite(_save_file, composite)
 
 
 if __name__ == "__main__":

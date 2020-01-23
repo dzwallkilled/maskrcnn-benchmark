@@ -115,7 +115,7 @@ class RIP:
             dicts = ['img', 'ann']
         if patches:
             dicts = [x+'_patches' for x in dicts]
-        dicts = ['img_patches', 'ann_mask_patches_v1']
+        dicts = ['img_patches', 'ann_mask_patches_v1'] #TODO specifically defined here
         if path is not None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -276,7 +276,7 @@ def view_data():
     args.datadir = '/data2/data2/zewei/data/RipData/RipTrainingAllData'
     args.outdir = '/data2/data2/zewei/data/RipData/'
     from pycocotools.coco import COCO
-    coco = COCO(annotation_file=os.path.join(args.outdir, 'rip_data_train.json'))
+    coco = COCO(annotation_file=os.path.expanduser('~/data/RipData/COCOJSONs/full/rip_data_train.json'))
     anns = coco.loadAnns(0)
     coco.showAnns(anns)
     pass
@@ -353,6 +353,6 @@ def convert_data():
 
 if __name__ == '__main__':
     # convert_image_file()
-    save_dataset()
-    convert_data()
-    # view_data()
+    # save_dataset()
+    # convert_data()
+    view_data()

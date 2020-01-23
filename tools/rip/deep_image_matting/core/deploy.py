@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 import time
 
-from .net import VGG16
+from net import VGG16
 
 
 def get_args():
